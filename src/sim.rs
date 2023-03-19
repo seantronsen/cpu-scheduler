@@ -1,6 +1,7 @@
 use crate::{ProgramError, Result};
 use std::io;
 
+#[derive(PartialEq, Debug)]
 pub struct SimProcess {
     pub name: String,
     pub priority: u8,
@@ -38,11 +39,55 @@ impl TryFrom<io::Result<String>> for SimProcess {
             _ => return Err(ProgramError::InvalidProcessSpecification(value.to_string())),
         };
 
-        Ok(Self {
+        Ok(SimProcess::new(name, priority, burst))
+    }
+}
+
+impl SimProcess {
+    pub fn new(name: String, priority: u8, burst: u32) -> Self {
+        Self {
             name,
             priority,
             burst,
             wait: 0,
-        })
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn build_reference_process() -> SimProcess {
+        SimProcess::new("T1".to_string(), 5, 25)
+    }
+
+    #[test]
+    fn can_parse_process_from_string() -> Result<()> {
+        let line = "T1,5,25".to_string();
+        let process = SimProcess::try_from(Ok(line));
+
+        assert_eq!(build_reference_process(), process?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn shouldnt_parse_process_from_invalid_string() {
+        let line = String::from("T1, 23, ");
+        assert!(SimProcess::try_from(Ok(line)).is_err());
+
+        let line = String::from("T1, 5, abc");
+        assert!(SimProcess::try_from(Ok(line)).is_err());
+    }
+
+    #[test]
+    fn valid_display() {
+        let reference_display_string =
+            "Process: T1 | Priority: 5 | Remaining Burst: 25 | Wait Time: 0";
+        assert_eq!(
+            build_reference_process().to_string(),
+            reference_display_string
+        );
     }
 }

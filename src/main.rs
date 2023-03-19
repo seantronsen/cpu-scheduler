@@ -31,7 +31,7 @@ fn run() -> scheduler::Result<()> {
     let processes = scheduler::read_processes()?;
     scheduler::display_processes(&processes);
     println!();
-    let finished = scheduler::fcfs(processes);
+    let finished = scheduler::algo::fcfs(processes);
     scheduler::display_processes(&finished);
     Ok(())
 }
