@@ -1,5 +1,4 @@
 use crate::{ProgramError, Result};
-use std::io;
 
 #[derive(PartialEq, Debug)]
 pub struct SimProcess {
@@ -19,24 +18,35 @@ impl std::fmt::Display for SimProcess {
     }
 }
 
-impl TryFrom<io::Result<String>> for SimProcess {
+impl TryFrom<String> for SimProcess {
     type Error = ProgramError;
-    fn try_from(value: io::Result<String>) -> Result<Self> {
-        let value = value?;
-        let mut components = value.split(",").map(|s| s.trim().to_string());
+    fn try_from(value: String) -> Result<Self> {
+        let mut components = value.split(",").map(|s| String::from(s.trim()));
         let name = match components.next() {
             Some(str) => str,
-            _ => return Err(ProgramError::InvalidProcessSpecification(value.to_string())),
+            _ => {
+                return Err(ProgramError::InvalidProcessSpecification(String::from(
+                    value,
+                )))
+            }
         };
 
         let priority = match components.next() {
             Some(str) => str.parse::<u8>()?,
-            _ => return Err(ProgramError::InvalidProcessSpecification(value.to_string())),
+            _ => {
+                return Err(ProgramError::InvalidProcessSpecification(String::from(
+                    value,
+                )))
+            }
         };
 
         let burst = match components.next() {
             Some(str) => str.parse::<u32>()?,
-            _ => return Err(ProgramError::InvalidProcessSpecification(value.to_string())),
+            _ => {
+                return Err(ProgramError::InvalidProcessSpecification(String::from(
+                    value,
+                )))
+            }
         };
 
         Ok(SimProcess::new(name, priority, burst))
@@ -65,7 +75,7 @@ mod tests {
     #[test]
     fn can_parse_process_from_string() -> Result<()> {
         let line = "T1,5,25".to_string();
-        let process = SimProcess::try_from(Ok(line));
+        let process = SimProcess::try_from(line);
 
         assert_eq!(build_reference_process(), process?);
 
@@ -75,10 +85,10 @@ mod tests {
     #[test]
     fn shouldnt_parse_process_from_invalid_string() {
         let line = String::from("T1, 23, ");
-        assert!(SimProcess::try_from(Ok(line)).is_err());
+        assert!(SimProcess::try_from(line).is_err());
 
         let line = String::from("T1, 5, abc");
-        assert!(SimProcess::try_from(Ok(line)).is_err());
+        assert!(SimProcess::try_from(line).is_err());
     }
 
     #[test]

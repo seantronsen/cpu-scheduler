@@ -33,7 +33,7 @@ pub fn read_processes() -> Result<Vec<SimProcess>> {
     let reader = BufReader::new(file);
     reader
         .lines()
-        .map(|line| SimProcess::try_from(line))
+        .map(|line| SimProcess::try_from(line?))
         .collect::<Result<Vec<SimProcess>>>()
 }
 
