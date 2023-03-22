@@ -3,7 +3,7 @@ Author: Sean Tronsen
 Programming Project: Scheduling Algorithms
 Chapter: 05
 
-Prompt: This project involves implementing several different process scheduling algorithms. The
+Prompt: This project involves implementing several different process scheduling algorithms. The
 scheduler will be assigned a predefined set of tasks and will schedule the tasks based on the
 selected scheduling algorithm. Each task is assigned a priority and CPU burst. The following
 scheduling algorithms will be implemented:
@@ -31,7 +31,7 @@ fn run() -> scheduler::Result<()> {
     let processes = scheduler::read_processes()?;
     scheduler::display_processes(&processes);
     println!();
-    let finished = scheduler::algo::fcfs(processes);
+    let finished = scheduler::algo::sjf(processes);
     scheduler::display_processes(&finished);
     Ok(())
 }

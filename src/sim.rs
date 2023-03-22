@@ -1,11 +1,18 @@
 use crate::{ProgramError, Result};
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 pub struct SimProcess {
     pub name: String,
     pub priority: u8,
     pub burst: u32,
     pub wait: u32,
+    order: OrderKind,
+}
+
+#[derive(Debug)]
+enum OrderKind {
+    Burst,
+    Priority,
 }
 
 impl std::fmt::Display for SimProcess {
@@ -48,18 +55,53 @@ impl TryFrom<String> for SimProcess {
                 )))
             }
         };
+        let order = match components.next() {
+            Some(str) => match str.parse::<u8>()? {
+                0 => OrderKind::Burst,
+                1 => OrderKind::Priority,
+                _ => {
+                    return Err(ProgramError::InvalidProcessSpecification(String::from(
+                        value,
+                    )))
+                }
+            },
+            _ => {
+                return Err(ProgramError::InvalidProcessSpecification(String::from(
+                    value,
+                )))
+            }
+        };
 
-        Ok(SimProcess::new(name, priority, burst))
+        Ok(SimProcess::new(name, priority, burst, order))
+    }
+}
+
+impl PartialOrd for SimProcess {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.order {
+            OrderKind::Burst => self.burst.partial_cmp(&other.burst),
+            OrderKind::Priority => self.priority.partial_cmp(&other.priority),
+        }
+    }
+}
+
+impl PartialEq for SimProcess {
+    fn eq(&self, other: &Self) -> bool {
+        match self.order {
+            OrderKind::Burst => self.burst == other.burst,
+            OrderKind::Priority => self.priority == other.priority,
+        }
     }
 }
 
 impl SimProcess {
-    pub fn new(name: String, priority: u8, burst: u32) -> Self {
+    fn new(name: String, priority: u8, burst: u32, order: OrderKind) -> Self {
         Self {
             name,
             priority,
             burst,
             wait: 0,
+            order,
         }
     }
 }
@@ -69,7 +111,7 @@ mod tests {
     use super::*;
 
     fn build_reference_process() -> SimProcess {
-        SimProcess::new("T1".to_string(), 5, 25)
+        SimProcess::new("T1".to_string(), 5, 25, OrderKind::Burst)
     }
 
     #[test]

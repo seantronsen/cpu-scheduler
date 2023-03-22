@@ -16,41 +16,58 @@ pub fn fcfs(mut incoming: Vec<SimProcess>) -> Vec<SimProcess> {
 }
 
 // sorting for sjf and so on
-
-fn real_mergesort(mut collection: Vec<SimProcess>) -> Vec<SimProcess> {
+fn mergesort(collection: Vec<SimProcess>) -> Vec<SimProcess> {
     let length = collection.len();
     if length == 0 {
         return collection;
     } else {
-        let mut space: Vec<Option<SimProcess>> = Vec::with_capacity(length);
-        space.fill_with(|| None);
         let mut collection: Vec<Option<SimProcess>> =
             collection.into_iter().map(|x| Some(x)).collect();
-        hidden_mergesort(&mut collection[..], &mut space[..], length);
-        collection
+        thunk_mergesort(&mut collection[..], length)
             .into_iter()
             .map(|x| x.unwrap())
             .collect::<Vec<SimProcess>>()
     }
 }
 
-fn hidden_mergesort(
+fn thunk_mergesort(
     collection: &mut [Option<SimProcess>],
-    space: &mut [Option<SimProcess>],
     length: usize,
-) {
+) -> Vec<Option<SimProcess>> {
+    let mut result = Vec::with_capacity(length);
+    // do nothing, already sorted
     if length == 1 {
-        // do nothing, already sorted
-        return;
+        result.push(collection[0].take());
+        result
     } else {
-        let partition = length / 2;
-        let (collection_a, collection_b) = collection.split_at_mut(partition);
-        let (space_a, space_b) = space.split_at_mut(partition);
-        hidden_mergesort(collection_a, space_a, partition);
-        hidden_mergesort(collection_b, space_b, length - partition);
+        let len_a = length / 2;
+        let len_b = length - len_a;
+        let (collection_a, collection_b) = collection.split_at_mut(len_a);
+        let mut collection_a = thunk_mergesort(collection_a, len_a);
+        let mut collection_b = thunk_mergesort(collection_b, len_b);
 
         // merge
+        let mut index_a = 0;
+        let mut index_b = 0;
 
-        for i in 0..length {}
+        for _ in 0..length {
+            if index_a < len_a
+                && (index_b == len_b || &collection_a[index_a] <= &collection_b[index_b])
+            {
+                result.push(collection_a[index_a].take());
+                index_a += 1;
+            } else if index_b < len_b
+                && (index_a == len_a || &collection_b[index_b] <= &collection_a[index_a])
+            {
+                result.push(collection_b[index_b].take());
+                index_b += 1;
+            }
+        }
+
+        result
     }
+}
+
+pub fn sjf(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
+    fcfs(mergesort(incoming))
 }
