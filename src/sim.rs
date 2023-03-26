@@ -10,17 +10,30 @@ pub struct SimProcess {
 }
 
 #[derive(Debug)]
-enum OrderKind {
+pub enum OrderKind {
     Burst,
     Priority,
+}
+
+impl std::fmt::Display for OrderKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                OrderKind::Burst => "Burst",
+                OrderKind::Priority => "Priority",
+            }
+        )
+    }
 }
 
 impl std::fmt::Display for SimProcess {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Process: {} | Priority: {} | Remaining Burst: {} | Wait Time: {}",
-            self.name, self.priority, self.burst, self.wait,
+            "Process: {} | Priority: {} | Remaining Burst: {} | Wait Time: {} | Order: {}",
+            self.name, self.priority, self.burst, self.wait, self.order,
         )
     }
 }
@@ -111,12 +124,12 @@ mod tests {
     use super::*;
 
     fn build_reference_process() -> SimProcess {
-        SimProcess::new("T1".to_string(), 5, 25, OrderKind::Burst)
+        SimProcess::new(String::from("T1"), 5, 25, OrderKind::Burst)
     }
 
     #[test]
-    fn can_parse_process_from_string() -> Result<()> {
-        let line = "T1,5,25".to_string();
+    fn parse_valid_process_string() -> Result<()> {
+        let line = "T1,5,25,1".to_string();
         let process = SimProcess::try_from(line);
 
         assert_eq!(build_reference_process(), process?);
@@ -125,18 +138,21 @@ mod tests {
     }
 
     #[test]
-    fn shouldnt_parse_process_from_invalid_string() {
+    fn parse_error_for_invalid_process_string() {
         let line = String::from("T1, 23, ");
         assert!(SimProcess::try_from(line).is_err());
 
         let line = String::from("T1, 5, abc");
+        assert!(SimProcess::try_from(line).is_err());
+
+        let line = String::from("T1, 5, 25, 8");
         assert!(SimProcess::try_from(line).is_err());
     }
 
     #[test]
     fn valid_display() {
         let reference_display_string =
-            "Process: T1 | Priority: 5 | Remaining Burst: 25 | Wait Time: 0";
+            "Process: T1 | Priority: 5 | Remaining Burst: 25 | Wait Time: 0 | Order: Burst";
         assert_eq!(
             build_reference_process().to_string(),
             reference_display_string

@@ -22,16 +22,16 @@ Priorities range from 1 to 10, where a higher numeric value indicates a higher r
 For round-robin scheduling, the length of a time quantum is 10 milliseconds.
  */
 
-use scheduler;
+use scheduler::{self, algo, sim};
 fn main() -> scheduler::Result<()> {
     run()
 }
 
 fn run() -> scheduler::Result<()> {
-    let processes = scheduler::read_processes()?;
+    let processes = scheduler::read_processes(sim::OrderKind::Priority)?;
     scheduler::display_processes(&processes);
     println!();
-    let finished = scheduler::algo::sjf(processes);
+    let finished = algo::priority(processes);
     scheduler::display_processes(&finished);
     Ok(())
 }

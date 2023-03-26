@@ -68,6 +68,14 @@ fn thunk_mergesort(
     }
 }
 
+// the following two functions are defined explicitly on purpose, despite having identical content.
+// since simple priority and shortest-job-first scheduling involve only sorting, there's little
+// else to do. the above implementation of mergesort relies on the traits implemented on the types.
+// as such, the job was already completed before these functions were written.
 pub fn sjf(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
+    fcfs(mergesort(incoming))
+}
+
+pub fn priority(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     fcfs(mergesort(incoming))
 }

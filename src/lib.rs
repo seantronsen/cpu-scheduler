@@ -1,7 +1,7 @@
 pub mod algo;
 pub mod sim;
 
-use sim::SimProcess;
+use sim::{OrderKind, SimProcess};
 use std::io::{self, BufRead, BufReader};
 use std::num::ParseIntError;
 use std::{fs, result};
@@ -13,6 +13,7 @@ pub enum ProgramError {
     IOError(io::Error),
     InvalidProcessSpecification(String),
     InvalidProcessParseError(ParseIntError),
+    GeneralError,
 }
 pub type Result<T> = result::Result<T, ProgramError>;
 
@@ -28,12 +29,16 @@ impl From<ParseIntError> for ProgramError {
     }
 }
 
-pub fn read_processes() -> Result<Vec<SimProcess>> {
+pub fn read_processes(ordering: OrderKind) -> Result<Vec<SimProcess>> {
     let file = fs::File::open(PROCESS_FILENAME)?;
     let reader = BufReader::new(file);
+    let order_key = match ordering {
+        OrderKind::Burst => 0,
+        OrderKind::Priority => 1,
+    };
     reader
         .lines()
-        .map(|line| SimProcess::try_from(line?))
+        .map(|line| SimProcess::try_from(format!("{},{}", line?, order_key)))
         .collect::<Result<Vec<SimProcess>>>()
 }
 
