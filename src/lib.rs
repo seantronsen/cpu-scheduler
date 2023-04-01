@@ -13,6 +13,7 @@ pub enum ProgramError {
     IOError(io::Error),
     InvalidProcessSpecification(String),
     InvalidProcessParseError(ParseIntError),
+    InvalidCommandInput,
     GeneralError,
 }
 pub type Result<T> = result::Result<T, ProgramError>;
