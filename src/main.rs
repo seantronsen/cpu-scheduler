@@ -22,95 +22,38 @@ Priorities range from 1 to 10, where a higher numeric value indicates a higher r
 For round-robin scheduling, the length of a time quantum is 10 milliseconds.
  */
 
-use scheduler::{self, algo, sim};
+use scheduler::{self, algo, sim, Configuration, ScheduleKind};
 fn main() -> scheduler::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    let config = match Config::build(&args) {
+    let config = match Configuration::build(&args) {
         scheduler::Result::Ok(config) => config,
         scheduler::Result::Err(e) => {
             eprintln!("error: {:?}", e);
-            print_usage_statement(args);
+            scheduler::print_usage_statement(args);
             std::process::exit(1);
         }
     };
     run(config)
 }
 
-enum Scheduler {
-    FCFS,
-    SJF,
-    Priority,
-    RR,
-    PriorityRR,
-}
-
-struct Config {
-    scheduler: Scheduler,
-    in_filename: String,
-}
-
-impl Config {
-    fn build(args: &Vec<String>) -> scheduler::Result<Self> {
-        let count = args.len();
-        let mut iter = args.into_iter();
-
-        if count != 3 {
-            return Err(scheduler::ProgramError::InvalidCommandInput);
-        }
-
-        // skip program name
-        iter.next();
-
-        let scheduler = match iter
-            .next()
-            .expect("<scheduler-type> is a required argument")
-            .parse::<u8>()?
-        {
-            0 => Scheduler::FCFS,
-            1 => Scheduler::SJF,
-            2 => Scheduler::Priority,
-            3 => Scheduler::RR,
-            4 => Scheduler::PriorityRR,
-            _ => return Err(scheduler::ProgramError::InvalidCommandInput),
-        };
-
-        let in_filename = match iter.next() {
-            Some(str) => String::from(str),
-            None => {
-                eprintln!("<process-filename> is a required argument");
-                return Err(scheduler::ProgramError::InvalidCommandInput);
-            }
-        };
-
-        Ok(Self {
-            scheduler,
-            in_filename,
-        })
-    }
-}
-
-fn print_usage_statement(args: Vec<String>) {
-    println!("usage: {} <scheduler-type> <process-filename>", args[0]);
-    println!("received: {:?}", args);
-}
-
-fn run(config: Config) -> scheduler::Result<()> {
+fn run(config: Configuration) -> scheduler::Result<()> {
     let order = match config.scheduler {
-        Scheduler::Priority => sim::OrderKind::Priority,
-        Scheduler::PriorityRR => sim::OrderKind::Priority,
+        ScheduleKind::Priority | ScheduleKind::PriorityRR => sim::OrderKind::Priority,
         _ => sim::OrderKind::Burst,
     };
 
-    let processes = scheduler::read_processes(order)?;
+    let processes = scheduler::read_processes(order, &config.filename)?;
     println!("received: input processes");
+    println!("process schedule kind: {:?}", config.scheduler);
     scheduler::display_processes(&processes);
     println!();
 
     let finished = match config.scheduler {
-        Scheduler::FCFS => algo::fcfs(processes),
-        Scheduler::SJF => algo::sjf(processes),
-        Scheduler::Priority => algo::priority(processes),
-        _ => panic!("remaining cases are still in the todo phase"),
+        ScheduleKind::FCFS => algo::fcfs(processes),
+        ScheduleKind::SJF => algo::sjf(processes),
+        ScheduleKind::Priority => algo::priority(processes),
+        ScheduleKind::RR => todo!(),
+        ScheduleKind::PriorityRR => todo!(),
     };
     scheduler::display_processes(&finished);
     Ok(())
