@@ -97,3 +97,41 @@ pub fn display_processes(processes: &Vec<SimProcess>) {
         println!("{}", process);
     }
 }
+
+#[allow(dead_code)]
+const DEFAULT_PROCESS_FILENAME: &str = "process-list.txt";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod io_tests {
+
+        use super::*;
+
+        #[test]
+        fn read_processes_ioerror_invalid_file() {
+            let filename = "does-not-exist.txt";
+            let unnecessary_ordering = OrderKind::Burst;
+            let result = read_processes(unnecessary_ordering, filename);
+            match result {
+                Err(ProgramError::IOError(_)) => (),
+                val => panic!("received unexpected value: {:?}", val),
+            };
+        }
+
+        #[test]
+        fn read_processes_valid_file() {
+            let filename = DEFAULT_PROCESS_FILENAME;
+            let unnecessary_ordering = OrderKind::Burst;
+
+            let result = read_processes(unnecessary_ordering, filename);
+            match result {
+                Ok(_) => (),
+                val => panic!("received unexpected value: {:?}", val),
+            };
+        }
+    }
+
+    mod config_tests {}
+}

@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::sim::SimProcess;
 pub fn fcfs(mut incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     let mut finished: Vec<SimProcess> = vec![];
@@ -78,4 +80,56 @@ pub fn sjf(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
 
 pub fn priority(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     fcfs(mergesort(incoming))
+}
+
+// data structures required for RR related algorithms
+#[allow(dead_code)]
+type PotentialNode<T> = Option<Rc<RefCell<DLLNode<T>>>>;
+#[allow(dead_code)]
+struct DLLNode<T> {
+    value: T,
+    next: PotentialNode<T>,
+    prev: PotentialNode<T>,
+}
+
+#[allow(dead_code)]
+impl<T> DLLNode<T> {
+    fn new(value: T, next: PotentialNode<T>, prev: PotentialNode<T>) -> Self {
+        Self { value, next, prev }
+    }
+}
+
+#[allow(dead_code)]
+struct DoublyLinkedList<T> {
+    pub head: PotentialNode<T>,
+    pub tail: PotentialNode<T>,
+}
+
+#[allow(dead_code)]
+impl<T> DoublyLinkedList<T> {
+    fn build() -> Self {
+        Self {
+            head: None,
+            tail: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    mod doubly_linked_list_tests {
+
+        use super::*;
+
+        #[test]
+        fn dll_build_empty_dll() {
+            let list: DoublyLinkedList<usize> = DoublyLinkedList::build();
+
+            assert!(list.head.is_none());
+            assert!(list.tail.is_none());
+        }
+    }
 }

@@ -1,15 +1,6 @@
 use crate::{ProgramError, Result};
 
 #[derive(Debug)]
-pub struct SimProcess {
-    pub name: String,
-    pub priority: u8,
-    pub burst: u32,
-    pub wait: u32,
-    order: OrderKind,
-}
-
-#[derive(Debug)]
 pub enum OrderKind {
     Burst,
     Priority,
@@ -26,6 +17,15 @@ impl std::fmt::Display for OrderKind {
             }
         )
     }
+}
+
+#[derive(Debug)]
+pub struct SimProcess {
+    pub name: String,
+    pub priority: u8,
+    pub burst: u32,
+    pub wait: u32,
+    order: OrderKind,
 }
 
 impl std::fmt::Display for SimProcess {
