@@ -83,26 +83,86 @@ pub fn priority(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
 }
 
 // data structures required for RR related algorithms
+
 #[allow(dead_code)]
-type PotentialNode<T> = Option<Rc<RefCell<DLLNode<T>>>>;
-#[allow(dead_code)]
-struct DLLNode<T> {
+struct NodeValue<T> {
     value: T,
     next: PotentialNode<T>,
     prev: PotentialNode<T>,
 }
-
-#[allow(dead_code)]
-impl<T> DLLNode<T> {
+impl<T> NodeValue<T> {
     fn new(value: T, next: PotentialNode<T>, prev: PotentialNode<T>) -> Self {
         Self { value, next, prev }
     }
 }
 
+// shorthand type
+type PotentialNode<T> = Option<Node<T>>;
+type ReferenceNode<T> = Rc<RefCell<NodeValue<T>>>;
+
+struct Node<T> {
+    reference: ReferenceNode<T>,
+}
+
+impl<T> Node<T> {
+    fn new(value: T, next: Option<Node<T>>, prev: Option<Node<T>>) -> Self {
+        let node_value: NodeValue<T> = NodeValue::new(value, next, prev);
+        let reference = Rc::new(RefCell::new(node_value));
+
+        Self { reference }
+    }
+
+    // might need to think about weak pointer references here
+    // othewise we might run into a 'memory leak'
+    fn clone_reference(&self) -> Self {
+        Self {
+            reference: Rc::clone(&self.reference),
+        }
+    }
+
+    fn set_next(&self, next: PotentialNode<T>) {
+        let mut value_ref = self.reference.borrow_mut();
+        value_ref.next = next;
+    }
+
+    fn set_prev(&self, prev: PotentialNode<T>) {
+        let mut value_ref = self.reference.borrow_mut();
+        value_ref.prev = prev;
+    }
+
+    fn clone_next_reference(&mut self) -> PotentialNode<T> {
+        let mut value_ref = self.reference.borrow_mut();
+        let next = value_ref.next.take();
+        match next {
+            Some(node) => {
+                let clone = node.clone_reference();
+                value_ref.next.replace(node);
+                Some(clone)
+            }
+            None => None,
+        }
+    }
+
+    fn clone_prev_reference(&mut self) -> PotentialNode<T> {
+        let mut value_ref = self.reference.borrow_mut();
+        let prev = value_ref.prev.take();
+
+        match prev {
+            Some(node) => {
+                let clone = node.clone_reference();
+                value_ref.prev.replace(node);
+                Some(clone)
+            }
+
+            None => None,
+        }
+    }
+}
+
 #[allow(dead_code)]
 struct DoublyLinkedList<T> {
-    pub head: PotentialNode<T>,
-    pub tail: PotentialNode<T>,
+    head: PotentialNode<T>,
+    tail: PotentialNode<T>,
 }
 
 #[allow(dead_code)]
@@ -112,6 +172,57 @@ impl<T> DoublyLinkedList<T> {
             head: None,
             tail: None,
         }
+    }
+
+    fn append(&mut self, item: T) {
+        let node: Node<T> = Node::new(item, None, None);
+
+        // start new head
+        if self.head.is_none() {
+            let node_clone = node.clone_reference();
+            self.head = Some(node);
+            self.tail = Some(node_clone);
+            return;
+        }
+
+        // append to tail and reassign original tail
+        let tail = self.tail.take().expect("tail didn't have a node");
+        node.set_prev(Some(tail.clone_reference()));
+        self.tail = Some(node);
+    }
+
+    fn prepend(&mut self, item: T) {
+        let node: Node<T> = Node::new(item, None, None);
+
+        // start new tail
+        if self.tail.is_none() {
+            let node_clone = node.clone_reference();
+            self.tail = Some(node);
+            self.head = Some(node_clone);
+            return;
+        }
+        // append to head and reassign original head
+        let head = self.head.take().expect("head didn't have a node");
+        node.set_next(Some(head.clone_reference()));
+        self.head = Some(node);
+    }
+
+    fn length(&mut self) -> usize {
+        if self.head.is_none() {
+            return 0;
+        }
+
+        let mut counter: usize = 1;
+        let holder = self.head.take().expect("head didn't have a node");
+        let mut current_node = holder.clone_reference();
+        self.head.replace(holder);
+
+        while let Some(node_ref) = current_node.clone_next_reference() {
+            counter += 1;
+            current_node = node_ref;
+        }
+
+        counter
     }
 }
 
