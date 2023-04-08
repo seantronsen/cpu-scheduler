@@ -159,11 +159,21 @@ impl<T> Node<T> {
     }
 }
 
+impl<T> Iterator for Node<T> {
+    fn next(&mut self) -> Option<Self::Item> {
+        self.clone_next_reference()
+    }
+
+    type Item = Node<T>;
+}
+
 #[allow(dead_code)]
 struct DoublyLinkedList<T> {
     head: PotentialNode<T>,
     tail: PotentialNode<T>,
 }
+
+type DLL<T> = DoublyLinkedList<T>;
 
 #[allow(dead_code)]
 impl<T> DoublyLinkedList<T> {
@@ -188,6 +198,7 @@ impl<T> DoublyLinkedList<T> {
         // append to tail and reassign original tail
         let tail = self.tail.take().expect("tail didn't have a node");
         node.set_prev(Some(tail.clone_reference()));
+        tail.set_next(Some(node.clone_reference()));
         self.tail = Some(node);
     }
 
@@ -204,10 +215,11 @@ impl<T> DoublyLinkedList<T> {
         // append to head and reassign original head
         let head = self.head.take().expect("head didn't have a node");
         node.set_next(Some(head.clone_reference()));
+        head.set_prev(Some(node.clone_reference()));
         self.head = Some(node);
     }
 
-    fn length(&mut self) -> usize {
+    pub fn length(&mut self) -> usize {
         if self.head.is_none() {
             return 0;
         }
@@ -237,10 +249,21 @@ mod tests {
 
         #[test]
         fn dll_build_empty_dll() {
-            let list: DoublyLinkedList<usize> = DoublyLinkedList::build();
+            let list: DLL<usize> = DLL::build();
 
             assert!(list.head.is_none());
             assert!(list.tail.is_none());
+        }
+
+        #[test]
+        fn dll_build_valid_length() {
+            let mut list: DLL<usize> = DLL::build();
+            list.append(0);
+            assert_eq!(1, list.length());
+            list.append(1);
+            assert_eq!(2, list.length());
+            list.append(2);
+            assert_eq!(3, list.length());
         }
     }
 }
