@@ -2,11 +2,12 @@
  *
  * todos:
  * - convert the dll implementations to return the result type: Ok(T) | Err(T)
+ * - implement the deref and drop traits for node
  *
  *
  */
 
-use std::{cell::RefCell, rc::Rc, result};
+use std::{cell::RefCell, ops::Deref, rc::Rc, result};
 
 // data structures required for RR related algorithms
 
@@ -43,6 +44,14 @@ type ReferenceNode<T> = Rc<RefCell<NodeValue<T>>>;
 
 struct Node<T> {
     reference: ReferenceNode<T>,
+}
+
+impl<T> Deref for Node<T> {
+    type Target = ReferenceNode<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.reference
+    }
 }
 
 impl<T> Node<T> {
@@ -229,7 +238,7 @@ mod tests {
 
         use super::*;
 
-        fn build_test_list() -> DLL<usize> {
+        fn arrange_test_list() -> DLL<usize> {
             DLL::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         }
 
@@ -243,7 +252,9 @@ mod tests {
 
         #[test]
         fn dll_push_node_valid_length() {
-            todo!()
+            let mut list = arrange_test_list();
+            list.push(11);
+            assert_eq!(11, list.length());
         }
 
         #[test]
@@ -263,7 +274,7 @@ mod tests {
 
         #[test]
         fn dll_build_valid_length() {
-            let mut list = build_test_list();
+            let mut list = arrange_test_list();
             assert_eq!(10, list.length());
         }
 
@@ -273,22 +284,37 @@ mod tests {
             assert_eq!(20, list.length());
         }
 
-        // todo: ensure you test the length
         #[test]
         fn dll_populated_pop_valid_result() {
-            todo!();
+            let mut list = arrange_test_list();
+            let item = list.pop();
+            assert!(item.is_ok());
+            assert_eq!(9, list.length());
+            assert_eq!(10, item.unwrap());
         }
 
         #[test]
         fn dll_unpopulated_pop_err_empty() {
-            todo!();
+            let mut list = DLL::<usize>::build();
+            assert!(list.is_empty());
+            assert!(list.pop().is_err());
         }
 
         #[test]
-        fn dll_populated_pop_decreases_old_tail_strong_count() {
-            todo!()
+        fn dll_populated_pop_fails_from_invalid_strong_count() -> Result<()> {
+            let mut list = arrange_test_list();
+            let tail = list.tail.take().unwrap();
+            assert_eq!(2, Rc::strong_count(&tail));
+            let _tail_clone = tail.clone_reference();
+            list.tail = Some(tail);
+            match list.pop() {
+                Ok(_) => panic!("shouldn't be ok..."),
+                Err(DataStructureError::NonZeroStrongCount(2)) => Ok(()),
+                Err(val) => Err(val),
+            }
         }
 
+        // todo: ensure you test the length
         #[test]
         fn dll_populated_shift_valid_result() {
             todo!();
@@ -317,7 +343,10 @@ mod tests {
 
         #[test]
         fn clone_reference_self_increases_strong_count() {
-            todo!()
+            let node = arrange_test_node();
+            assert_eq!(Rc::strong_count(&node), 1);
+            let _reference = node.clone_reference();
+            assert_eq!(Rc::strong_count(&node), 2);
         }
 
         #[test]
