@@ -3,6 +3,7 @@
  * todos:
  * - convert the dll implementations to return the result type: Ok(T) | Err(T)
  * - implement the deref and drop traits for node
+ * - convert Node<T> into a tuple struct
  *
  *
  */
