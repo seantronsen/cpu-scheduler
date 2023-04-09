@@ -50,8 +50,8 @@ fn run(config: Configuration) -> scheduler::Result<()> {
 
     let finished = match config.scheduler {
         ScheduleKind::FCFS => algo::fcfs(processes),
-        ScheduleKind::SJF => algo::sjf(processes),
-        ScheduleKind::Priority => algo::priority(processes),
+        ScheduleKind::SJF => algo::simple_sort_to_fcfs(processes),
+        ScheduleKind::Priority => algo::simple_sort_to_fcfs(processes),
         ScheduleKind::RR => todo!(),
         ScheduleKind::PriorityRR => todo!(),
     };
