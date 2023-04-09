@@ -238,6 +238,15 @@ impl<T> DoublyLinkedList<T> {
     }
 }
 
+impl<T> From<Vec<T>> for DoublyLinkedList<T> {
+    fn from(collection: Vec<T>) -> Self {
+        let mut list: DLL<T> = DLL::build();
+        collection.into_iter().for_each(|item| list.append(item));
+
+        list
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -263,6 +272,12 @@ mod tests {
             list.append(1);
             assert_eq!(2, list.length());
             list.append(2);
+            assert_eq!(3, list.length());
+        }
+
+        #[test]
+        fn dll_from_vector_valid_length() {
+            let mut list = DLL::from(vec![0, 0, 0]);
             assert_eq!(3, list.length());
         }
     }
