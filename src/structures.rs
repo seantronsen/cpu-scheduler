@@ -2,9 +2,6 @@
  *
  * todos:
  * - convert the dll implementations to return the result type: Ok(T) | Err(T)
- * - implement the deref and drop traits for node
- * - convert Node<T> into a tuple struct
- *
  *
  */
 
@@ -43,15 +40,13 @@ impl<T> NodeValue<T> {
 type PotentialNode<T> = Option<Node<T>>;
 type ReferenceNode<T> = Rc<RefCell<NodeValue<T>>>;
 
-struct Node<T> {
-    reference: ReferenceNode<T>,
-}
+struct Node<T>(ReferenceNode<T>);
 
 impl<T> Deref for Node<T> {
     type Target = ReferenceNode<T>;
 
     fn deref(&self) -> &Self::Target {
-        &self.reference
+        &self.0
     }
 }
 
@@ -59,30 +54,27 @@ impl<T> Node<T> {
     fn new(value: T, next: Option<Node<T>>, prev: Option<Node<T>>) -> Self {
         let node_value: NodeValue<T> = NodeValue::new(value, next, prev);
         let reference = Rc::new(RefCell::new(node_value));
-
-        Self { reference }
+        Self(reference)
     }
 
     // might need to think about weak pointer references here
     // othewise we might run into a 'memory leak'
     fn clone_reference(&self) -> Self {
-        Self {
-            reference: Rc::clone(&self.reference),
-        }
+        Self(Rc::clone(&self))
     }
 
     fn set_next(&self, next: PotentialNode<T>) {
-        let mut value_ref = self.reference.borrow_mut();
+        let value_ref = &mut self.borrow_mut();
         value_ref.next = next;
     }
 
     fn set_prev(&self, prev: PotentialNode<T>) {
-        let mut value_ref = self.reference.borrow_mut();
+        let value_ref = &mut self.borrow_mut();
         value_ref.prev = prev;
     }
 
     fn clone_next_reference(&mut self) -> PotentialNode<T> {
-        let mut value_ref = self.reference.borrow_mut();
+        let value_ref = &mut self.borrow_mut();
         let next = value_ref.next.take();
         match next {
             Some(node) => {
@@ -95,7 +87,7 @@ impl<T> Node<T> {
     }
 
     fn clone_prev_reference(&mut self) -> PotentialNode<T> {
-        let mut value_ref = self.reference.borrow_mut();
+        let value_ref = &mut self.borrow_mut();
         let prev = value_ref.prev.take();
 
         match prev {
@@ -104,7 +96,6 @@ impl<T> Node<T> {
                 value_ref.prev.replace(node);
                 Some(clone)
             }
-
             None => None,
         }
     }
@@ -190,7 +181,7 @@ impl<T> DoublyLinkedList<T> {
             }
         };
 
-        Ok(Rc::<RefCell<NodeValue<T>>>::try_unwrap(old_tail.reference)?
+        Ok(Rc::<RefCell<NodeValue<T>>>::try_unwrap(old_tail.0)?
             .into_inner()
             .value)
     }
@@ -211,8 +202,23 @@ impl<T> DoublyLinkedList<T> {
         self.head = Some(node);
     }
 
-    pub fn shift(&mut self) -> T {
-        todo!();
+    pub fn shift(&mut self) -> Result<T> {
+        let mut old_head = match self.head.take() {
+            Some(node_ref) => node_ref,
+            None => return Err(DataStructureError::InvalidActionEmpty),
+        };
+
+        match old_head.clone_next_reference() {
+            Some(node_ref) => {
+                node_ref.set_prev(None);
+                self.head = Some(node_ref);
+            }
+            None => self.tail = None,
+        }
+
+        Ok(Rc::<RefCell<NodeValue<T>>>::try_unwrap(old_head.0)?
+            .into_inner()
+            .value)
     }
 }
 
@@ -225,8 +231,12 @@ impl<T> From<Vec<T>> for DoublyLinkedList<T> {
 }
 
 impl<T> Into<Vec<T>> for DoublyLinkedList<T> {
-    fn into(self) -> Vec<T> {
-        todo!()
+    fn into(mut self) -> Vec<T> {
+        let mut holder: Vec<T> = vec![];
+        while !self.is_empty() {
+            holder.push(self.shift().expect("expected a value"));
+        }
+        holder
     }
 }
 
@@ -239,8 +249,12 @@ mod tests {
 
         use super::*;
 
+        fn arrange_reference_vector() -> Vec<usize> {
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        }
+
         fn arrange_test_list() -> DLL<usize> {
-            DLL::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+            DLL::from(arrange_reference_vector())
         }
 
         #[test]
@@ -254,44 +268,63 @@ mod tests {
         #[test]
         fn dll_push_node_valid_length() {
             let mut list = arrange_test_list();
+            let value_vector = arrange_reference_vector();
             list.push(11);
-            assert_eq!(11, list.length());
+            assert_eq!(value_vector.len() + 1, list.length());
         }
 
         #[test]
-        fn dll_push_node_valid_order() {
-            todo!()
+        fn dll_push_node_valid_order() -> Result<()> {
+            let mut list = arrange_test_list();
+            let mut value_vector = arrange_reference_vector();
+            let value_test = 11;
+            list.push(value_test);
+            value_vector.push(value_test);
+            let list_vector: Vec<usize> = list.into();
+            assert_eq!(value_vector, list_vector);
+            Ok(())
         }
 
         #[test]
         fn dll_unshift_node_valid_length() {
-            todo!()
+            let mut list = arrange_test_list();
+            list.unshift(0);
+            assert_eq!(11, list.length());
         }
 
         #[test]
         fn dll_unshift_node_valid_order() {
-            todo!()
+            let mut list = arrange_test_list();
+            let mut value_vector = arrange_reference_vector();
+            let value_test = 0;
+            list.unshift(value_test);
+            value_vector.insert(0, value_test);
+            let list_vector: Vec<usize> = list.into();
+            assert_eq!(list_vector, value_vector)
         }
 
         #[test]
         fn dll_build_valid_length() {
             let mut list = arrange_test_list();
-            assert_eq!(10, list.length());
+            let value_vector = arrange_reference_vector();
+            assert_eq!(value_vector.len(), list.length());
         }
 
         #[test]
         fn dll_from_vector_valid_length() {
-            let mut list = DLL::from(vec![0; 20]);
-            assert_eq!(20, list.length());
+            let count = 20;
+            let mut list = DLL::from(vec![0; count]);
+            assert_eq!(count, list.length());
         }
 
         #[test]
         fn dll_populated_pop_valid_result() {
             let mut list = arrange_test_list();
-            let item = list.pop();
-            assert!(item.is_ok());
-            assert_eq!(9, list.length());
-            assert_eq!(10, item.unwrap());
+            let value_vector = arrange_reference_vector();
+            let pop_value = list.pop();
+            assert!(pop_value.is_ok());
+            assert_eq!(list.length(), value_vector.len() - 1);
+            assert_eq!(pop_value.unwrap(), value_vector[value_vector.len() - 1]);
         }
 
         #[test]
@@ -315,19 +348,33 @@ mod tests {
             }
         }
 
-        // todo: ensure you test the length
         #[test]
         fn dll_populated_shift_valid_result() {
-            todo!();
+            let mut list = arrange_test_list();
+            let value_vector = arrange_reference_vector();
+            let shift_value = list.shift();
+            assert!(shift_value.is_ok());
+            assert_eq!(shift_value.unwrap(), value_vector[0]);
+            assert_eq!(list.length(), value_vector.len() - 1);
         }
 
         #[test]
         fn dll_unpopulated_shift_err_empty() {
-            todo!();
+            let mut list = DLL::<usize>::build();
+            assert!(list.is_empty());
+            assert!(list.shift().is_err());
         }
+
         #[test]
         fn dll_populated_shift_decreases_old_head_strong_count() {
             todo!()
+        }
+
+        #[test]
+        fn dll_into_vector_valid() {
+            let list = arrange_test_list();
+            let value_vector = arrange_reference_vector();
+            assert_eq!(value_vector, Into::<Vec<usize>>::into(list));
         }
     }
     mod node_tests {
