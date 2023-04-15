@@ -148,6 +148,26 @@ impl<T> DoublyLinkedList<T> {
         counter
     }
 
+    fn clone_head_reference(&mut self) -> Result<Node<T>> {
+        let head = match self.head.take() {
+            Some(node_ref) => node_ref,
+            None => return Err(DataStructureError::InvalidActionEmpty),
+        };
+        let reference = head.clone_reference();
+        self.head.replace(head);
+        Ok(reference)
+    }
+
+    fn clone_tail_reference(&mut self) -> Result<Node<T>> {
+        let tail = match self.tail.take() {
+            Some(node_ref) => node_ref,
+            None => return Err(DataStructureError::InvalidActionEmpty),
+        };
+        let reference = tail.clone_reference();
+        self.tail.replace(tail);
+        Ok(reference)
+    }
+
     fn push(&mut self, item: T) {
         let node: Node<T> = Node::new(item, None, None);
 
@@ -160,7 +180,7 @@ impl<T> DoublyLinkedList<T> {
         }
 
         // append to tail and reassign original tail
-        let tail = self.tail.take().expect("tail didn't have a node");
+        let tail = self.tail.take().expect("list tail didn't have a node");
         node.set_prev(Some(tail.clone_reference()));
         tail.set_next(Some(node.clone_reference()));
         self.tail = Some(node);
@@ -176,9 +196,7 @@ impl<T> DoublyLinkedList<T> {
                 node_ref.set_next(None);
                 self.tail = Some(node_ref);
             }
-            None => {
-                self.head = None;
-            }
+            None => self.head = None,
         };
 
         Ok(Rc::<RefCell<NodeValue<T>>>::try_unwrap(old_tail.0)?
@@ -245,17 +263,16 @@ mod tests {
 
     use super::*;
 
+    fn arrange_reference_vector() -> Vec<usize> {
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    }
+
+    fn arrange_test_list() -> DLL<usize> {
+        DLL::from(arrange_reference_vector())
+    }
     mod doubly_linked_list_tests {
 
         use super::*;
-
-        fn arrange_reference_vector() -> Vec<usize> {
-            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        }
-
-        fn arrange_test_list() -> DLL<usize> {
-            DLL::from(arrange_reference_vector())
-        }
 
         #[test]
         fn dll_build_empty_dll() {
@@ -366,8 +383,18 @@ mod tests {
         }
 
         #[test]
-        fn dll_populated_shift_decreases_old_head_strong_count() {
-            todo!()
+        fn dll_populated_shift_fails_from_invalid_strong_count() -> Result<()> {
+            let mut list = arrange_test_list();
+            let head = list.head.take().unwrap();
+            assert_eq!(2, Rc::strong_count(&head));
+
+            let _head_clone = head.clone_reference();
+            list.head = Some(head);
+            match list.shift() {
+                Ok(_) => panic!("should not have returned Ok"),
+                Err(DataStructureError::NonZeroStrongCount(2)) => Ok(()),
+                Err(val) => Err(val),
+            }
         }
 
         #[test]
@@ -385,11 +412,6 @@ mod tests {
         }
 
         #[test]
-        fn reminder_make_tests() {
-            todo!()
-        }
-
-        #[test]
         fn clone_reference_self_increases_strong_count() {
             let node = arrange_test_node();
             assert_eq!(Rc::strong_count(&node), 1);
@@ -398,13 +420,23 @@ mod tests {
         }
 
         #[test]
-        fn clone_reference_next_increases_next_strong_count() {
-            todo!()
+        fn clone_reference_next_increases_next_strong_count() -> Result<()> {
+            let mut list = arrange_test_list();
+            let node = list.clone_head_reference()?.clone_next_reference().unwrap();
+            assert_eq!(3, Rc::strong_count(&node));
+            let clone = list.clone_head_reference()?.clone_next_reference().unwrap();
+            assert_eq!(4, Rc::strong_count(&clone));
+            Ok(())
         }
 
         #[test]
-        fn clone_reference_prev_increases_prev_strong_count() {
-            todo!()
+        fn clone_reference_prev_increases_prev_strong_count() -> Result<()> {
+            let mut list = arrange_test_list();
+            let node = list.clone_tail_reference()?.clone_prev_reference().unwrap();
+            assert_eq!(3, Rc::strong_count(&node));
+            let clone = list.clone_tail_reference()?.clone_prev_reference().unwrap();
+            assert_eq!(4, Rc::strong_count(&clone));
+            Ok(())
         }
     }
 }
