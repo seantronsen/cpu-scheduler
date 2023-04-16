@@ -1,4 +1,5 @@
 use crate::sim::SimProcess;
+use crate::structures::DLL;
 pub fn fcfs(mut incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     let mut finished: Vec<SimProcess> = vec![];
     incoming.reverse();
@@ -69,6 +70,36 @@ fn thunk_mergesort(
 
 /// using the rules applied via the struct and mergesort implementation, fill algorithmic
 /// requirements by applying a simple sort and transitioning to the standard FCFS approach.
-pub fn simple_sort_to_fcfs(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
+pub fn sort_before_fcfs(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     fcfs(mergesort(incoming))
+}
+
+pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
+    let mut outgoing = vec![];
+    let mut incoming: DLL<SimProcess> = DLL::from(incoming);
+
+    while !incoming.is_empty() {
+        let mut current_process = match incoming.shift() {
+            Ok(process) => process,
+            Err(val) => panic!("an error occurred: {:?}", val),
+        };
+
+        println!("process entry state: {}", &current_process);
+        if current_process.burst > quantum {
+            current_process.burst -= quantum;
+        } else {
+            current_process.burst = 0;
+        }
+
+        // TODO: Update to modify the wait times
+
+        println!("process exit state: {}", &current_process);
+        if current_process.burst != 0 {
+            incoming.push(current_process);
+        } else {
+            outgoing.push(current_process);
+        }
+    }
+
+    outgoing
 }

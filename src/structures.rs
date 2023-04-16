@@ -1,13 +1,4 @@
-/*
- *
- * todos:
- * - convert the dll implementations to return the result type: Ok(T) | Err(T)
- *
- */
-
 use std::{cell::RefCell, ops::Deref, rc::Rc, result};
-
-// data structures required for RR related algorithms
 
 #[derive(Debug)]
 pub enum DataStructureError {
@@ -25,7 +16,7 @@ impl<T> From<Rc<T>> for DataStructureError {
 }
 
 #[allow(dead_code)]
-struct NodeValue<T> {
+pub struct NodeValue<T> {
     value: T,
     next: PotentialNode<T>,
     prev: PotentialNode<T>,
@@ -38,9 +29,9 @@ impl<T> NodeValue<T> {
 
 // shorthand type
 type PotentialNode<T> = Option<Node<T>>;
-type ReferenceNode<T> = Rc<RefCell<NodeValue<T>>>;
+pub type ReferenceNode<T> = Rc<RefCell<NodeValue<T>>>;
 
-struct Node<T>(ReferenceNode<T>);
+pub struct Node<T>(ReferenceNode<T>);
 
 impl<T> Deref for Node<T> {
     type Target = ReferenceNode<T>;
@@ -59,7 +50,7 @@ impl<T> Node<T> {
 
     // might need to think about weak pointer references here
     // othewise we might run into a 'memory leak'
-    fn clone_reference(&self) -> Self {
+    pub fn clone_reference(&self) -> Self {
         Self(Rc::clone(&self))
     }
 
@@ -73,7 +64,7 @@ impl<T> Node<T> {
         value_ref.prev = prev;
     }
 
-    fn clone_next_reference(&mut self) -> PotentialNode<T> {
+    pub fn clone_next_reference(&mut self) -> PotentialNode<T> {
         let value_ref = &mut self.borrow_mut();
         let next = value_ref.next.take();
         match next {
@@ -86,7 +77,7 @@ impl<T> Node<T> {
         }
     }
 
-    fn clone_prev_reference(&mut self) -> PotentialNode<T> {
+    pub fn clone_prev_reference(&mut self) -> PotentialNode<T> {
         let value_ref = &mut self.borrow_mut();
         let prev = value_ref.prev.take();
 
@@ -109,13 +100,12 @@ impl<T> Iterator for Node<T> {
     type Item = Node<T>;
 }
 
-#[allow(dead_code)]
-struct DoublyLinkedList<T> {
+pub struct DoublyLinkedList<T> {
     head: PotentialNode<T>,
     tail: PotentialNode<T>,
 }
 
-type DLL<T> = DoublyLinkedList<T>;
+pub type DLL<T> = DoublyLinkedList<T>;
 
 #[allow(dead_code)]
 impl<T> DoublyLinkedList<T> {
@@ -148,7 +138,7 @@ impl<T> DoublyLinkedList<T> {
         counter
     }
 
-    fn clone_head_reference(&mut self) -> Result<Node<T>> {
+    pub fn clone_head_reference(&mut self) -> Result<Node<T>> {
         let head = match self.head.take() {
             Some(node_ref) => node_ref,
             None => return Err(DataStructureError::InvalidActionEmpty),
@@ -158,7 +148,7 @@ impl<T> DoublyLinkedList<T> {
         Ok(reference)
     }
 
-    fn clone_tail_reference(&mut self) -> Result<Node<T>> {
+    pub fn clone_tail_reference(&mut self) -> Result<Node<T>> {
         let tail = match self.tail.take() {
             Some(node_ref) => node_ref,
             None => return Err(DataStructureError::InvalidActionEmpty),
@@ -168,7 +158,7 @@ impl<T> DoublyLinkedList<T> {
         Ok(reference)
     }
 
-    fn push(&mut self, item: T) {
+    pub fn push(&mut self, item: T) {
         let node: Node<T> = Node::new(item, None, None);
 
         // start new head
@@ -203,7 +193,7 @@ impl<T> DoublyLinkedList<T> {
             .into_inner()
             .value)
     }
-    fn unshift(&mut self, item: T) {
+    pub fn unshift(&mut self, item: T) {
         let node: Node<T> = Node::new(item, None, None);
 
         // start new tail
