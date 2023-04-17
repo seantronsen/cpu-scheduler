@@ -85,13 +85,17 @@ pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
         };
 
         println!("process entry state: {}", &current_process);
+
         if current_process.burst > quantum {
             current_process.burst -= quantum;
         } else {
             current_process.burst = 0;
         }
 
-        // TODO: Update to modify the wait times
+        // BUG: with the iterator which only updates for current head item. 
+        let mut head = incoming.clone_head_reference();
+        head.iter_mut()
+            .for_each(|node| node.mutate_value(|value| value.wait += quantum));
 
         println!("process exit state: {}", &current_process);
         if current_process.burst != 0 {

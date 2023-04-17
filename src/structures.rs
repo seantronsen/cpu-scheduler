@@ -55,17 +55,21 @@ impl<T> Node<T> {
     }
 
     fn set_next(&self, next: PotentialNode<T>) {
-        let value_ref = &mut self.borrow_mut();
+        let mut value_ref = self.borrow_mut();
         value_ref.next = next;
     }
 
     fn set_prev(&self, prev: PotentialNode<T>) {
-        let value_ref = &mut self.borrow_mut();
+        let mut value_ref = self.borrow_mut();
         value_ref.prev = prev;
     }
 
+    pub fn mutate_value(&mut self, mut fn_mut: impl FnMut(&mut T)) {
+        fn_mut(&mut (self.borrow_mut()).value);
+    }
+
     pub fn clone_next_reference(&mut self) -> PotentialNode<T> {
-        let value_ref = &mut self.borrow_mut();
+        let mut value_ref = self.borrow_mut();
         let next = value_ref.next.take();
         match next {
             Some(node) => {
@@ -78,7 +82,7 @@ impl<T> Node<T> {
     }
 
     pub fn clone_prev_reference(&mut self) -> PotentialNode<T> {
-        let value_ref = &mut self.borrow_mut();
+        let mut value_ref = self.borrow_mut();
         let prev = value_ref.prev.take();
 
         match prev {
