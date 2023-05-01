@@ -14,7 +14,7 @@
       "request": "launch",
       "name": "Launch with algorithm 00",
       "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
-      "args": ["process-list.txt", 0],
+      "args": ["process-list.txt", "0"],
       "stopOnEntry": false
     },
     {
@@ -22,7 +22,7 @@
       "request": "launch",
       "name": "Launch with algorithm 01",
       "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
-      "args": ["process-list.txt", 1],
+      "args": ["process-list.txt", "1"],
       "stopOnEntry": false
     },
     {
@@ -30,7 +30,7 @@
       "request": "launch",
       "name": "Launch with algorithm 02",
       "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
-      "args": ["process-list.txt", 2],
+      "args": ["process-list.txt", "2"],
       "stopOnEntry": false
     },
     {
@@ -38,7 +38,7 @@
       "request": "launch",
       "name": "Launch with algorithm 03",
       "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
-      "args": ["process-list.txt", 3],
+      "args": ["process-list.txt", "3"],
       "stopOnEntry": false
     },
     {
@@ -46,7 +46,7 @@
       "request": "launch",
       "name": "Launch with algorithm 04",
       "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
-      "args": ["process-list.txt", 4],
+      "args": ["process-list.txt", "4"],
       "stopOnEntry": false
     }
   ]
