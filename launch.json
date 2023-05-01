@@ -1,0 +1,53 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "rt_lldb",
+      "request": "launch",
+      "name": "Launch only with required args",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": ["process-list.txt"],
+      "stopOnEntry": false
+    },
+    {
+      "type": "rt_lldb",
+      "request": "launch",
+      "name": "Launch with algorithm 00",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": ["process-list.txt", 0],
+      "stopOnEntry": false
+    },
+    {
+      "type": "rt_lldb",
+      "request": "launch",
+      "name": "Launch with algorithm 01",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": ["process-list.txt", 1],
+      "stopOnEntry": false
+    },
+    {
+      "type": "rt_lldb",
+      "request": "launch",
+      "name": "Launch with algorithm 02",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": ["process-list.txt", 2],
+      "stopOnEntry": false
+    },
+    {
+      "type": "rt_lldb",
+      "request": "launch",
+      "name": "Launch with algorithm 03",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": ["process-list.txt", 3],
+      "stopOnEntry": false
+    },
+    {
+      "type": "rt_lldb",
+      "request": "launch",
+      "name": "Launch with algorithm 04",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": ["process-list.txt", 4],
+      "stopOnEntry": false
+    }
+  ]
+}
