@@ -1,16 +1,17 @@
 use crate::sim::SimProcess;
-use crate::structures::DLL;
+use crate::structures::{DLL, DoublyLinkedList};
 pub fn fcfs(mut incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     let mut finished: Vec<SimProcess> = vec![];
     incoming.reverse();
 
+    let mut running_time = 0;
+
     while incoming.len() != 0 {
         let mut process_current = incoming.pop().unwrap();
-        for process_next in incoming.iter_mut() {
-            process_next.wait += process_current.burst;
-        }
-        process_current.burst = 0;
+        let burst_time = process_current.remaining_burst;
+        process_current.run_burst(running_time, burst_time);
         finished.push(process_current);
+        running_time += burst_time;
     }
 
     finished
@@ -75,8 +76,9 @@ pub fn sort_before_fcfs(incoming: Vec<SimProcess>) -> Vec<SimProcess> {
 }
 
 pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
-    let mut outgoing = vec![];
+    let mut outgoing: DLL<SimProcess> = DLL::from(vec![]);
     let mut incoming: DLL<SimProcess> = DLL::from(incoming);
+    let mut current_time: u32 = 0;
 
     while !incoming.is_empty() {
         let mut current_process = match incoming.shift() {
@@ -84,26 +86,33 @@ pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
             Err(val) => panic!("an error occurred: {:?}", val),
         };
 
-        println!("process entry state: {}", &current_process);
-
-        if current_process.burst > quantum {
-            current_process.burst -= quantum;
+        let mut burst = quantum;
+        let mut destination = Some(&mut incoming);
+        if current_process.remaining_burst > quantum {
+            current_process.run_burst(current_time, burst);
         } else {
-            current_process.burst = 0;
+            destination.replace(&mut outgoing).unwrap();
+            burst -= burst - current_process.remaining_burst;
+            current_process.run_burst(current_time, burst);
         }
 
-        // BUG: with the iterator which only updates for current head item. 
-        let mut head = incoming.clone_head_reference();
-        head.iter_mut()
-            .for_each(|node| node.mutate_value(|value| value.wait += quantum));
+        current_time += burst;
+        println!(
+            "Time: {} | Burst Complete for {}",
+            &current_time, &current_process
+        );
 
-        println!("process exit state: {}", &current_process);
-        if current_process.burst != 0 {
-            incoming.push(current_process);
-        } else {
-            outgoing.push(current_process);
-        }
+        destination.unwrap().push(current_process);
     }
 
-    outgoing
+    outgoing.into()
+}
+
+pub fn priority_rr(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
+    let mut incoming = mergesort(incoming);
+    let mut outgoing: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
+    todo!();
+
+
+    outgoing.into()
 }

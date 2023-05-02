@@ -4,6 +4,7 @@ use std::{cell::RefCell, ops::Deref, rc::Rc, result};
 pub enum DataStructureError {
     InvalidState,
     InvalidReference,
+    InvalidIndex,
     NonZeroStrongCount(usize),
     InvalidActionEmpty,
 }
@@ -232,6 +233,38 @@ impl<T> DoublyLinkedList<T> {
             .into_inner()
             .value)
     }
+
+    pub fn insert(&mut self, index: usize, item: T) -> Result<()> {
+        let length = self.length();
+        if index > length {
+            return Err(DataStructureError::InvalidIndex);
+        } else if index == 0 {
+            return Ok(self.unshift(item));
+        } else if index == length {
+            return Ok(self.push(item));
+        }
+
+        let mut counter: usize = 0;
+        let holder = self.head.take().expect("head didn't have a node");
+        let mut current_node = holder.clone_reference();
+        self.head.replace(holder);
+
+        while counter != index {
+            current_node = current_node.clone_next_reference().unwrap();
+            counter += 1;
+        }
+
+        let new_node = Node::new(item, None, None);
+        let previous_reference = current_node
+            .clone_prev_reference()
+            .expect("no previous node");
+        let next_reference = current_node;
+        previous_reference.set_next(Some(new_node.clone_reference()));
+        next_reference.set_prev(Some(new_node.clone_reference()));
+        new_node.set_prev(Some(previous_reference));
+        new_node.set_next(Some(next_reference));
+        Ok(())
+    }
 }
 
 impl<T> From<Vec<T>> for DoublyLinkedList<T> {
@@ -346,16 +379,15 @@ mod tests {
         }
 
         #[test]
-        fn dll_populated_pop_fails_from_invalid_strong_count() -> Result<()> {
+        fn dll_populated_pop_fails_from_invalid_strong_count() {
             let mut list = arrange_test_list();
             let tail = list.tail.take().unwrap();
             assert_eq!(2, Rc::strong_count(&tail));
             let _tail_clone = tail.clone_reference();
             list.tail = Some(tail);
             match list.pop() {
-                Ok(_) => panic!("shouldn't be ok..."),
-                Err(DataStructureError::NonZeroStrongCount(2)) => Ok(()),
-                Err(val) => Err(val),
+                Err(DataStructureError::NonZeroStrongCount(2)) => (),
+                val => panic!("should not have received {:?}", val),
             }
         }
 
@@ -396,6 +428,25 @@ mod tests {
             let list = arrange_test_list();
             let value_vector = arrange_reference_vector();
             assert_eq!(value_vector, Into::<Vec<usize>>::into(list));
+        }
+
+        #[test]
+        fn dll_insert_invalid_index() {
+            let mut list = arrange_test_list();
+            match list.insert(999, 999) {
+                Err(DataStructureError::InvalidIndex) => (),
+                val => panic!("should not have received {:?}", val),
+            }
+        }
+
+        #[test]
+        fn dll_insert_valid_index() {
+            let mut list = arrange_test_list();
+            let mut vector = arrange_reference_vector();
+            let value = 999;
+            list.insert(1, value).unwrap();
+            vector.insert(1, value);
+            assert_eq!(vector, Into::<Vec<usize>>::into(list));
         }
     }
     mod node_tests {

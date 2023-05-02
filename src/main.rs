@@ -22,7 +22,11 @@ Priorities range from 1 to 10, where a higher numeric value indicates a higher r
 For round-robin scheduling, the length of a time quantum is 10 milliseconds.
  */
 
-use scheduler::{self, algo, sim, Configuration, ScheduleKind};
+use scheduler::{
+    self,
+    algo::{self, priority_rr},
+    sim, Configuration, ScheduleKind,
+};
 fn main() -> scheduler::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let config = match Configuration::build(&args) {
@@ -53,7 +57,7 @@ fn run(config: Configuration) -> scheduler::Result<()> {
         ScheduleKind::SJF => algo::sort_before_fcfs(processes),
         ScheduleKind::Priority => algo::sort_before_fcfs(processes),
         ScheduleKind::RR => algo::round_robin(processes, 10),
-        ScheduleKind::PriorityRR => todo!(),
+        ScheduleKind::PriorityRR => algo::priority_rr(processes, 10),
     };
     scheduler::display_processes(&finished);
     Ok(())
