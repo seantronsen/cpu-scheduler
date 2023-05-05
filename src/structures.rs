@@ -17,11 +17,13 @@ impl<T> From<Rc<T>> for DataStructureError {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct NodeValue<T> {
     value: T,
     next: PotentialNode<T>,
     prev: PotentialNode<T>,
 }
+
 impl<T> NodeValue<T> {
     fn new(value: T, next: PotentialNode<T>, prev: PotentialNode<T>) -> Self {
         Self { value, next, prev }
@@ -32,6 +34,7 @@ impl<T> NodeValue<T> {
 type PotentialNode<T> = Option<Node<T>>;
 pub type ReferenceNode<T> = Rc<RefCell<NodeValue<T>>>;
 
+#[derive(Debug)]
 pub struct Node<T>(ReferenceNode<T>);
 
 impl<T> Deref for Node<T> {
@@ -103,6 +106,12 @@ impl<T> Iterator for Node<T> {
     }
 
     type Item = Node<T>;
+}
+
+impl<T> DoubleEndedIterator for Node<T> {
+    fn next_back(&mut self) -> Option<Node<T>> {
+        self.clone_prev_reference()
+    }
 }
 
 pub struct DoublyLinkedList<T> {
@@ -482,6 +491,36 @@ mod tests {
             let clone = list.clone_tail_reference()?.clone_prev_reference().unwrap();
             assert_eq!(4, Rc::strong_count(&clone));
             Ok(())
+        }
+
+        #[test]
+        fn mutate_value() -> Result<()> {
+            let mut node = Node::new(0, None, None);
+            assert_eq!(node.borrow().value, 0);
+            node.mutate_value(|x| *x += 1);
+            assert_eq!(node.borrow().value, 1);
+            Ok(())
+        }
+    }
+
+    #[cfg(test)]
+    mod node_iterator_tests {
+        use super::*;
+
+        #[test]
+        fn node_iter_has_next() {
+            let mut list = arrange_test_list();
+            let head = list.clone_head_reference().unwrap();
+            let iter = head.into_iter();
+            let mut counter = 0;
+            // for _value in iter {
+            //     counter += 1;
+            //     println!("counter: {:?}\t node: {:?}", counter, _value);
+            //     if counter == 20 {
+            //         break;
+            //     }
+            // }
+            // panic!("should definitely panic");
         }
     }
 }

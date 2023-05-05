@@ -1,5 +1,5 @@
 use crate::sim::SimProcess;
-use crate::structures::{DLL, DoublyLinkedList};
+use crate::structures::DLL;
 pub fn fcfs(mut incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     let mut finished: Vec<SimProcess> = vec![];
     incoming.reverse();
@@ -108,13 +108,15 @@ pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
     outgoing.into()
 }
 
-pub fn priority_rr(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
-    let mut incoming = mergesort(incoming);
-    let mut outgoing: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
-    let mut temp: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
-
-    todo!();
-
-
-    outgoing.into()
-}
+// pub fn priority_rr(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
+//     let mut incoming = mergesort(incoming);
+//     let mut outgoing: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
+//     let mut temp: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
+// 
+// 
+// 
+//     todo!();
+// 
+// 
+//     outgoing.into()
+// }
