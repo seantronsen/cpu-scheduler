@@ -111,6 +111,8 @@ pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
 pub fn priority_rr(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
     let mut incoming = mergesort(incoming);
     let mut outgoing: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
+    let mut temp: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
+
     todo!();
 
 
