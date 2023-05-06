@@ -1,4 +1,9 @@
-use std::{cell::RefCell, ops::Deref, rc::Rc, result};
+use std::{
+    cell::RefCell,
+    ops::Deref,
+    rc::{Rc, Weak},
+    result,
+};
 
 #[derive(Debug)]
 pub enum DataStructureError {
@@ -18,81 +23,56 @@ impl<T> From<Rc<T>> for DataStructureError {
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct NodeValue<T> {
+pub struct Node<T> {
     value: T,
-    next: PotentialNode<T>,
-    prev: PotentialNode<T>,
+    next: Option<NextNode<T>>,
+    prev: Option<PrevNode<T>>,
 }
 
-impl<T> NodeValue<T> {
-    fn new(value: T, next: PotentialNode<T>, prev: PotentialNode<T>) -> Self {
+impl<T> Node<T> {
+    fn new(value: T, next: Option<NextNode<T>>, prev: Option<PrevNode<T>>) -> Self {
         Self { value, next, prev }
     }
 }
 
-// shorthand type
-type PotentialNode<T> = Option<Node<T>>;
-pub type ReferenceNode<T> = Rc<RefCell<NodeValue<T>>>;
-
-#[derive(Debug)]
-pub struct Node<T>(ReferenceNode<T>);
+pub type NextNode<T> = Rc<RefCell<Node<T>>>;
+pub type PrevNode<T> = Weak<RefCell<Node<T>>>;
 
 impl<T> Deref for Node<T> {
-    type Target = ReferenceNode<T>;
+    type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.value
     }
 }
 
 impl<T> Node<T> {
-    fn new(value: T, next: Option<Node<T>>, prev: Option<Node<T>>) -> Self {
-        let node_value: NodeValue<T> = NodeValue::new(value, next, prev);
-        let reference = Rc::new(RefCell::new(node_value));
-        Self(reference)
+    fn set_next(&mut self, next: Option<NextNode<T>>) {
+        self.next = next;
     }
 
-    // might need to think about weak pointer references here
-    // othewise we might run into a 'memory leak'
-    pub fn clone_reference(&self) -> Self {
-        Self(Rc::clone(&self))
+    fn set_prev(&mut self, prev: Option<PrevNode<T>>) {
+        self.prev = prev;
     }
 
-    fn set_next(&self, next: PotentialNode<T>) {
-        let mut value_ref = self.borrow_mut();
-        value_ref.next = next;
-    }
-
-    fn set_prev(&self, prev: PotentialNode<T>) {
-        let mut value_ref = self.borrow_mut();
-        value_ref.prev = prev;
-    }
-
-    pub fn mutate_value(&mut self, mut fn_mut: impl FnMut(&mut T)) {
-        fn_mut(&mut (self.borrow_mut()).value);
-    }
-
-    pub fn clone_next_reference(&mut self) -> PotentialNode<T> {
-        let mut value_ref = self.borrow_mut();
-        let next = value_ref.next.take();
+    pub fn next_as_reference(&mut self) -> Option<NextNode<T>> {
+        let next = self.next.take();
         match next {
             Some(node) => {
-                let clone = node.clone_reference();
-                value_ref.next.replace(node);
+                let clone = Rc::clone(&node);
+                self.set_next(Some(node));
                 Some(clone)
             }
             None => None,
         }
     }
 
-    pub fn clone_prev_reference(&mut self) -> PotentialNode<T> {
-        let mut value_ref = self.borrow_mut();
-        let prev = value_ref.prev.take();
-
+    pub fn prev_as_reference(&mut self) -> Option<PrevNode<T>> {
+        let prev = self.prev.take();
         match prev {
             Some(node) => {
-                let clone = node.clone_reference();
-                value_ref.prev.replace(node);
+                let clone = Weak::clone(&node);
+                self.set_prev(Some(node));
                 Some(clone)
             }
             None => None,
@@ -100,24 +80,22 @@ impl<T> Node<T> {
     }
 }
 
-impl<T> Iterator for Node<T> {
-    fn next(&mut self) -> Option<Self::Item> {
-        self.clone_next_reference()
-    }
-
-    type Item = Node<T>;
-}
-
-impl<T> DoubleEndedIterator for Node<T> {
-    fn next_back(&mut self) -> Option<Node<T>> {
-        self.clone_prev_reference()
-    }
-}
+/*
+ * For DLL, implement
+ * - IntoIterator
+ * - Create types Iter and IterMut
+ *  - types must implement iterator and double ended iterator
+ *
+ *
+ *
+ */
 
 pub struct DoublyLinkedList<T> {
-    head: PotentialNode<T>,
-    tail: PotentialNode<T>,
+    head: Option<NextNode<T>>,
+    tail: Option<PrevNode<T>>,
 }
+
+// todo: make Iter<T> and IterMut<T>
 
 pub type DLL<T> = DoublyLinkedList<T>;
 
@@ -140,11 +118,11 @@ impl<T> DoublyLinkedList<T> {
         }
 
         let mut counter: usize = 1;
-        let holder = self.head.take().expect("head didn't have a node");
-        let mut current_node = holder.clone_reference();
+        let holder = self.head.take().expect("head should have had a node.");
+        let mut current_node = Rc::clone(&holder);
         self.head.replace(holder);
 
-        while let Some(node_ref) = current_node.clone_next_reference() {
+        while let Some(node_ref) = current_node.borrow_mut().next_as_reference() {
             counter += 1;
             current_node = node_ref;
         }
@@ -152,22 +130,22 @@ impl<T> DoublyLinkedList<T> {
         counter
     }
 
-    pub fn clone_head_reference(&mut self) -> Result<Node<T>> {
+    pub fn head_as_reference(&mut self) -> Result<NextNode<T>> {
         let head = match self.head.take() {
             Some(node_ref) => node_ref,
             None => return Err(DataStructureError::InvalidActionEmpty),
         };
-        let reference = head.clone_reference();
+        let reference = Rc::clone(&head);
         self.head.replace(head);
         Ok(reference)
     }
 
-    pub fn clone_tail_reference(&mut self) -> Result<Node<T>> {
+    pub fn tail_as_reference(&mut self) -> Result<PrevNode<T>> {
         let tail = match self.tail.take() {
             Some(node_ref) => node_ref,
             None => return Err(DataStructureError::InvalidActionEmpty),
         };
-        let reference = tail.clone_reference();
+        let reference = Weak::clone(&tail);
         self.tail.replace(tail);
         Ok(reference)
     }
@@ -177,15 +155,21 @@ impl<T> DoublyLinkedList<T> {
 
         // start new head
         if self.head.is_none() {
-            let node_clone = node.clone_reference();
-            self.head = Some(node);
-            self.tail = Some(node_clone);
+            let node_strong = Rc::new(RefCell::new(node));
+            let node_weak = Rc::downgrade(&node_strong);
+            self.head = Some(node_strong);
+            self.tail = Some(node_weak);
             return;
         }
 
         // append to tail and reassign original tail
-        let tail = self.tail.take().expect("list tail didn't have a node");
-        node.set_prev(Some(tail.clone_reference()));
+        let tail = self.tail.take().expect("list tail should have had a node.");
+        let tail_strong = Weak::upgrade(&tail).expect("an error message");
+        node.set_prev(Some(Weak::clone(&tail)));
+        let node_strong = Rc::new(RefCell::new(node));
+        tail_strong.borrow_mut().set_next(Some(Rc::clone(&node_strong)));
+
+
         tail.set_next(Some(node.clone_reference()));
         self.tail = Some(node);
     }
@@ -476,9 +460,9 @@ mod tests {
         #[test]
         fn clone_reference_next_increases_next_strong_count() -> Result<()> {
             let mut list = arrange_test_list();
-            let node = list.clone_head_reference()?.clone_next_reference().unwrap();
+            let node = list.head_as_reference()?.next_as_reference().unwrap();
             assert_eq!(3, Rc::strong_count(&node));
-            let clone = list.clone_head_reference()?.clone_next_reference().unwrap();
+            let clone = list.head_as_reference()?.next_as_reference().unwrap();
             assert_eq!(4, Rc::strong_count(&clone));
             Ok(())
         }
@@ -486,9 +470,9 @@ mod tests {
         #[test]
         fn clone_reference_prev_increases_prev_strong_count() -> Result<()> {
             let mut list = arrange_test_list();
-            let node = list.clone_tail_reference()?.clone_prev_reference().unwrap();
+            let node = list.tail_as_reference()?.prev_as_reference().unwrap();
             assert_eq!(3, Rc::strong_count(&node));
-            let clone = list.clone_tail_reference()?.clone_prev_reference().unwrap();
+            let clone = list.tail_as_reference()?.prev_as_reference().unwrap();
             assert_eq!(4, Rc::strong_count(&clone));
             Ok(())
         }
@@ -510,7 +494,7 @@ mod tests {
         #[test]
         fn node_iter_has_next() {
             let mut list = arrange_test_list();
-            let head = list.clone_head_reference().unwrap();
+            let head = list.head_as_reference().unwrap();
             let iter = head.into_iter();
             let mut counter = 0;
             // for _value in iter {
