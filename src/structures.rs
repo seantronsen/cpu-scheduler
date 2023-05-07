@@ -46,6 +46,10 @@ impl<T> Deref for Node<T> {
     }
 }
 
+
+
+
+
 impl<T> Node<T> {
     fn set_next(&mut self, next: Option<NextNode<T>>) {
         self.next = next;
@@ -77,6 +81,11 @@ impl<T> Node<T> {
             }
             None => None,
         }
+    }
+
+    fn destruct(self) -> T {
+        let Self { value, next, prev } = self;
+        value
     }
 }
 
@@ -118,7 +127,7 @@ impl<T> DoublyLinkedList<T> {
         }
 
         let mut counter: usize = 1;
-        let holder = self.head.take().expect("head should have had a node.");
+        let holder = self.head.take().expect("invalid head node");
         let mut current_node = Rc::clone(&holder);
         self.head.replace(holder);
 
@@ -150,81 +159,91 @@ impl<T> DoublyLinkedList<T> {
         Ok(reference)
     }
 
-    pub fn push(&mut self, item: T) {
+    pub fn push(&mut self, item: T) -> Result<()> {
         let node: Node<T> = Node::new(item, None, None);
+        let node_strong = Rc::new(RefCell::new(node));
+        let node_weak = Rc::downgrade(&node_strong);
+        self.tail = Some(node_weak);
 
         // start new head
         if self.head.is_none() {
-            let node_strong = Rc::new(RefCell::new(node));
-            let node_weak = Rc::downgrade(&node_strong);
             self.head = Some(node_strong);
-            self.tail = Some(node_weak);
-            return;
+            return Ok(());
         }
 
         // append to tail and reassign original tail
-        let tail = self.tail.take().expect("list tail should have had a node.");
-        let tail_strong = Weak::upgrade(&tail).expect("an error message");
-        node.set_prev(Some(Weak::clone(&tail)));
-        let node_strong = Rc::new(RefCell::new(node));
-        tail_strong.borrow_mut().set_next(Some(Rc::clone(&node_strong)));
-
-
-        tail.set_next(Some(node.clone_reference()));
-        self.tail = Some(node);
+        let tail = match self.tail.take() {
+            Some(node_ref) => node_ref,
+            None => return Err(DataStructureError::InvalidReference),
+        };
+        let tail_strong =
+            Weak::upgrade(&tail).ok_or_else(|| DataStructureError::InvalidReference)?;
+        tail_strong
+            .borrow_mut()
+            .set_next(Some(Rc::clone(&node_strong)));
+        node_strong.borrow_mut().set_prev(Some(Weak::clone(&tail)));
+        Ok(())
     }
 
     pub fn pop(&mut self) -> Result<T> {
         let mut old_tail = match self.tail.take() {
-            Some(node_ref) => node_ref,
+            Some(node_ref) => match Weak::upgrade(&node_ref) {
+                Some(value) => value,
+                None => return Err(DataStructureError::InvalidReference),
+            },
             None => return Err(DataStructureError::InvalidActionEmpty),
         };
-        match old_tail.clone_prev_reference() {
-            Some(node_ref) => {
-                node_ref.set_next(None);
-                self.tail = Some(node_ref);
+
+        let old_tail_mut = old_tail.borrow_mut();
+        match old_tail_mut.prev {
+            Some(ref prev_node_weak) => {
+                let mut prev_node_strong = Weak::upgrade(prev_node_weak).unwrap();
+                prev_node_strong.borrow_mut().set_next(None);
+                self.tail = Some(prev_node_weak)
             }
             None => self.head = None,
         };
-
-        Ok(Rc::<RefCell<NodeValue<T>>>::try_unwrap(old_tail.0)?
+        Ok(Rc::<RefCell<Node<T>>>::try_unwrap(old_tail)?
             .into_inner()
-            .value)
+            .destruct())
     }
-    pub fn unshift(&mut self, item: T) {
-        let node: Node<T> = Node::new(item, None, None);
-
+    pub fn unshift(&mut self, item: T) -> Result<()> {
         // start new tail
         if self.tail.is_none() {
-            let node_clone = node.clone_reference();
-            self.tail = Some(node);
-            self.head = Some(node_clone);
-            return;
+            return self.push(item);
         }
+        let node: Node<T> = Node::new(item, None, None);
+        let node_strong = Rc::new(RefCell::new(node));
+        let node_weak = Rc::downgrade(&node_strong);
+
         // append to head and reassign original head
-        let head = self.head.take().expect("head didn't have a node");
-        node.set_next(Some(head.clone_reference()));
-        head.set_prev(Some(node.clone_reference()));
-        self.head = Some(node);
+        let head = self
+            .head
+            .take()
+            .ok_or_else(|| DataStructureError::InvalidActionEmpty)?;
+        head.borrow_mut().set_prev(Some(node_weak));
+        node_strong.borrow_mut().set_next(Some(head));
+        self.head = Some(node_strong);
+        Ok(())
     }
 
     pub fn shift(&mut self) -> Result<T> {
-        let mut old_head = match self.head.take() {
-            Some(node_ref) => node_ref,
-            None => return Err(DataStructureError::InvalidActionEmpty),
-        };
+        let mut old_head = self
+            .head
+            .take()
+            .ok_or_else(|| DataStructureError::InvalidActionEmpty)?;
 
-        match old_head.clone_next_reference() {
-            Some(node_ref) => {
-                node_ref.set_prev(None);
-                self.head = Some(node_ref);
+        match old_head.borrow_mut().next {
+            Some(next_node) => {
+                next_node.borrow_mut().set_prev(None);
+                self.head = Some(next_node);
             }
             None => self.tail = None,
-        }
+        };
 
-        Ok(Rc::<RefCell<NodeValue<T>>>::try_unwrap(old_head.0)?
+        Ok(Rc::<RefCell<Node<T>>>::try_unwrap(old_head)?
             .into_inner()
-            .value)
+            .destruct())
     }
 
     pub fn insert(&mut self, index: usize, item: T) -> Result<()> {
@@ -232,30 +251,39 @@ impl<T> DoublyLinkedList<T> {
         if index > length {
             return Err(DataStructureError::InvalidIndex);
         } else if index == 0 {
-            return Ok(self.unshift(item));
+            return self.unshift(item);
         } else if index == length {
-            return Ok(self.push(item));
+            return self.push(item);
         }
 
         let mut counter: usize = 0;
-        let holder = self.head.take().expect("head didn't have a node");
-        let mut current_node = holder.clone_reference();
-        self.head.replace(holder);
+        let node_head = self
+            .head
+            .take()
+            .ok_or_else(|| DataStructureError::InvalidReference)?;
+        let mut current_node = Rc::clone(&node_head);
+        self.head.replace(node_head);
 
         while counter != index {
-            current_node = current_node.clone_next_reference().unwrap();
+            current_node = current_node.borrow_mut().next_as_reference().unwrap();
             counter += 1;
         }
 
-        let new_node = Node::new(item, None, None);
-        let previous_reference = current_node
-            .clone_prev_reference()
-            .expect("no previous node");
-        let next_reference = current_node;
-        previous_reference.set_next(Some(new_node.clone_reference()));
-        next_reference.set_prev(Some(new_node.clone_reference()));
-        new_node.set_prev(Some(previous_reference));
-        new_node.set_next(Some(next_reference));
+        let node_new = Node::new(item, None, None);
+        let node_new_strong = Rc::new(RefCell::new(node_new));
+        let previous_reference =
+            Weak::upgrade(&current_node.borrow_mut().prev_as_reference().unwrap()).unwrap();
+        let next_reference = current_node.borrow_mut().next_as_reference().unwrap();
+
+        previous_reference
+            .borrow_mut()
+            .set_next(Some(Rc::clone(&node_new_strong)));
+        next_reference
+            .borrow_mut()
+            .set_prev(Some(Rc::downgrade(&node_new_strong)));
+        let mut_ref_node_new = node_new_strong.borrow_mut();
+        mut_ref_node_new.set_next(Some(next_reference));
+        mut_ref_node_new.set_prev(Some(Rc::downgrade(&previous_reference)));
         Ok(())
     }
 }
@@ -263,7 +291,7 @@ impl<T> DoublyLinkedList<T> {
 impl<T> From<Vec<T>> for DoublyLinkedList<T> {
     fn from(collection: Vec<T>) -> Self {
         let mut list: DLL<T> = DLL::build();
-        collection.into_iter().for_each(|item| list.push(item));
+        collection.into_iter().for_each(|item| list.push(item).unwrap());
         list
     }
 }

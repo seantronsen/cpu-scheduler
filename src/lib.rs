@@ -1,6 +1,7 @@
 pub mod algo;
 pub mod sim;
 pub mod structures;
+pub mod structures2;
 
 use sim::{OrderKind, SimProcess};
 use std::io::{self, BufRead, BufReader};
