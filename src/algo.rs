@@ -81,42 +81,53 @@ pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
     let mut current_time: u32 = 0;
 
     while !incoming.is_empty() {
-        let mut current_process = match incoming.shift() {
-            Ok(process) => process,
-            Err(val) => panic!("an error occurred: {:?}", val),
-        };
+        if let Some(mut current_process) = incoming.pop_front() {
+            let mut burst = quantum;
+            let mut destination = Some(&mut incoming);
+            if current_process.remaining_burst > quantum {
+                current_process.run_burst(current_time, burst);
+            } else {
+                destination.replace(&mut outgoing);
+                burst -= burst - current_process.remaining_burst;
+                current_process.run_burst(current_time, burst);
+            }
 
-        let mut burst = quantum;
-        let mut destination = Some(&mut incoming);
-        if current_process.remaining_burst > quantum {
-            current_process.run_burst(current_time, burst);
-        } else {
-            destination.replace(&mut outgoing).unwrap();
-            burst -= burst - current_process.remaining_burst;
-            current_process.run_burst(current_time, burst);
+            current_time += burst;
+            println!(
+                "Time: {} | Burst Complete for {}",
+                &current_time, &current_process
+            );
+
+            destination.unwrap().append(current_process);
         }
-
-        current_time += burst;
-        println!(
-            "Time: {} | Burst Complete for {}",
-            &current_time, &current_process
-        );
-
-        destination.unwrap().push(current_process);
     }
 
     outgoing.into()
 }
 
-// pub fn priority_rr(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
-//     let mut incoming = mergesort(incoming);
-//     let mut outgoing: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
-//     let mut temp: DLL<SimProcess> = DoublyLinkedList::from(vec![]);
-// 
-// 
-// 
-//     todo!();
-// 
-// 
-//     outgoing.into()
-// }
+pub fn priority_rr(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
+    let mut incoming = DLL::from(mergesort(incoming));
+    let mut outgoing: DLL<SimProcess> = DLL::new();
+    let mut current_time: u32 = 0;
+
+    while let Some(mut process) = incoming.pop_front() {
+        let burst = match quantum <= process.remaining_burst {
+            true => quantum,
+            false => quantum - (process.remaining_burst % quantum),
+        };
+
+        process.run_burst(current_time, burst);
+        current_time += burst;
+
+        if process.remaining_burst == 0 {
+            outgoing.append(process);
+        } else {
+            match incoming.iter().position(|x| x.priority > process.priority) {
+                Some(index) => incoming.insert(index, process),
+                None => incoming.append(process),
+            }
+        }
+    }
+
+    outgoing.into()
+}

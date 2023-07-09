@@ -53,7 +53,7 @@ fn run(config: Configuration) -> scheduler::Result<()> {
         ScheduleKind::SJF => algo::sort_before_fcfs(processes),
         ScheduleKind::Priority => algo::sort_before_fcfs(processes),
         ScheduleKind::RR => algo::round_robin(processes, 10),
-        ScheduleKind::PriorityRR => todo!(), //algo::priority_rr(processes, 10),
+        ScheduleKind::PriorityRR => algo::priority_rr(processes, 10), //algo::priority_rr(processes, 10),
     };
     scheduler::display_processes(&finished);
     Ok(())
