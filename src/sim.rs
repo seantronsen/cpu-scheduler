@@ -171,8 +171,7 @@ mod tests {
 
     #[test]
     fn valid_display() {
-        let reference_display_string =
-            "Process: T1 | Priority: 5 | Running Time: 0 | Remaining Burst: 25 | Wait Time: 0 | Order: Burst";
+        let reference_display_string = "Process: T1     | Priority: 000005 | Running Time: 000000 | Remaining Burst: 000025 | Wait Time: 000000 | Order: Burst";
         assert_eq!(
             build_reference_process().to_string(),
             reference_display_string
