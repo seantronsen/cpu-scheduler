@@ -3,9 +3,7 @@ use crate::structures::DLL;
 pub fn fcfs(mut incoming: Vec<SimProcess>) -> Vec<SimProcess> {
     let mut finished: Vec<SimProcess> = vec![];
     incoming.reverse();
-
     let mut running_time = 0;
-
     while incoming.len() != 0 {
         let mut process_current = incoming.pop().unwrap();
         let burst_time = process_current.remaining_burst;
@@ -13,7 +11,6 @@ pub fn fcfs(mut incoming: Vec<SimProcess>) -> Vec<SimProcess> {
         finished.push(process_current);
         running_time += burst_time;
     }
-
     finished
 }
 
@@ -91,17 +88,11 @@ pub fn round_robin(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
                 burst -= burst - current_process.remaining_burst;
                 current_process.run_burst(current_time, burst);
             }
-
             current_time += burst;
-            println!(
-                "Time: {} | Burst Complete for {}",
-                &current_time, &current_process
-            );
-
+            println!("Time: {:06} | Burst Complete for {:06}", &current_time, &current_process);
             destination.unwrap().append(current_process);
         }
     }
-
     outgoing.into()
 }
 
@@ -128,6 +119,5 @@ pub fn priority_rr(incoming: Vec<SimProcess>, quantum: u32) -> Vec<SimProcess> {
             }
         }
     }
-
     outgoing.into()
 }

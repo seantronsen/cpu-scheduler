@@ -33,7 +33,7 @@ impl std::fmt::Display for SimProcess {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Process: {} | Priority: {} | Running Time: {} | Remaining Burst: {} | Wait Time: {} | Order: {}",
+            "Process: {:06} | Priority: {:06} | Running Time: {:06} | Remaining Burst: {:06} | Wait Time: {:06} | Order: {:06}",
             self.name, self.priority, self.running_time, self.remaining_burst, self.wait, self.order,
         )
     }
@@ -127,13 +127,12 @@ impl SimProcess {
     /// - r is the total previous runtime
     /// - t is the current time (i.e. time when the process switches to the running state)
     pub fn run_burst(&mut self, time_at_start: u32, burst: u32) {
-        println!("ENTERING: {}", &self);
         let wait_time = time_at_start - self.running_time;
         self.wait = wait_time;
         self.running_time += burst;
         self.remaining_burst -= burst;
         println!(
-            "Time: {} | Burst Complete for {}",
+            "Time: {:06} | Burst Complete for {}",
             time_at_start + burst,
             &self
         );

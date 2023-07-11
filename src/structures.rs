@@ -12,7 +12,7 @@ pub enum DataStructureError {
     InvalidActionEmpty,
 }
 pub type Result<T> = result::Result<T, DataStructureError>;
-
+type Link<T> = Option<NonNull<DLLNode<T>>>;
 #[allow(dead_code)]
 struct DLLNode<T> {
     next: Link<T>,
@@ -20,7 +20,6 @@ struct DLLNode<T> {
     value: T,
 }
 
-#[allow(dead_code)]
 impl<T> DLLNode<T> {
     fn new(value: T) -> Self {
         Self {
@@ -36,9 +35,6 @@ impl<T> DLLNode<T> {
     }
 }
 
-type Link<T> = Option<NonNull<DLLNode<T>>>;
-
-#[allow(dead_code)]
 pub struct DLL<T> {
     head: Link<T>,
     tail: Link<T>,
@@ -130,7 +126,7 @@ impl<T> DLL<T> {
     pub fn insert(&mut self, index: usize, value: T) {
         if index >= self.length {
             panic!(
-                "received invalid index '{}' for list with length '{}'",
+                "invalid index '{}' for list with length '{}'",
                 index, self.length
             );
         }
@@ -150,7 +146,6 @@ impl<T> DLL<T> {
                     current_node = next_node;
                     counter += 1;
                 }
-
                 DLLNode::enchain((*current_node.as_ptr()).prev.take().unwrap(), new_node);
             }
             DLLNode::enchain(new_node, current_node);
@@ -190,30 +185,6 @@ impl<T> From<Vec<T>> for DLL<T> {
         let mut list: DLL<T> = DLL::new();
         collection.into_iter().for_each(|item| list.append(item));
         list
-    }
-}
-
-impl<T> Into<Vec<T>> for DLL<T> {
-    fn into(self) -> Vec<T> {
-        Vec::from_iter(self.into_iter())
-    }
-}
-
-impl<T: PartialEq> PartialEq for DLL<T> {
-    fn eq(&self, other: &Self) -> bool {
-        if self.length != other.length {
-            return false;
-        }
-        let mut flag = true;
-        let mut zipped = self.iter().zip(other.iter());
-
-        while let Some((x, y)) = zipped.next() {
-            if x != y {
-                flag = false;
-            }
-        }
-
-        flag
     }
 }
 
@@ -312,6 +283,29 @@ impl<T> Drop for DLL<T> {
     }
 }
 
+impl<T> Into<Vec<T>> for DLL<T> {
+    fn into(self) -> Vec<T> {
+        Vec::from_iter(self.into_iter())
+    }
+}
+
+impl<T: PartialEq> PartialEq for DLL<T> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.length != other.length {
+            return false;
+        }
+        let mut flag = true;
+        let mut zipped = self.iter().zip(other.iter());
+
+        while let Some((x, y)) = zipped.next() {
+            if x != y {
+                flag = false;
+            }
+        }
+
+        flag
+    }
+}
 impl<T> FromIterator<T> for DLL<T> {
     fn from_iter<A: IntoIterator<Item = T>>(iter: A) -> Self {
         let mut list = DLL::<T>::new();
@@ -362,7 +356,6 @@ mod tests {
         fn append() {
             let mut list: DLL<u8> = DLL::new();
             (0..3).enumerate().for_each(|(i, x)| {
-                println!("the value of i: {}, x: {}", i, x);
                 assert_eq!(list.length, i);
                 list.append(x);
                 assert_eq!(list.length, i + 1);
